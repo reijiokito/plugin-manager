@@ -1,0 +1,10 @@
+{
+  "module": {
+    "name": "Greeter",
+    "handShakeConfig": {
+      "protocolVersion" : 1,
+      "magicCookieKey": "BASIC_PLUGIN",
+      "magicCookieValue": "basic"
+    }
+  }
+}
