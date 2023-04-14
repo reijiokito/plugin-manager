@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/hashicorp/go-hclog"
+	"github.com/reijiokito/plugin-manager/plugins/greeter-plugin/shared"
 	plugin "github.com/reijiokito/sigma-go-plugin"
-	shared "greeter-plugin/shared"
 	"log"
 	"os"
 	"time"
