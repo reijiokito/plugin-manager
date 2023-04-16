@@ -7,6 +7,8 @@ import (
 	"net/http"
 )
 
+const MODULE = "core"
+
 func main() {
 	managerPort := flag.String("manager_port", "8080", "Manager Port")
 
@@ -23,8 +25,10 @@ func main() {
 	}
 
 	/* Init module */
-	sigma.Init("core", &config)
+	sigma.Init(MODULE, &config)
 	defer sigma.Release()
+
+	//TODO: Implement APIs create/check/verify plugin
 
 	log.Println("Sigma Plugin Manager Start with port " + *managerPort)
 	if err := http.ListenAndServe(":"+*managerPort, nil); err != nil {
