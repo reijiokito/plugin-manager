@@ -6,9 +6,9 @@ type Context struct {
 	Logger
 }
 
-func (ctx *Context) PostEvent(channel string, data proto.Message) { // account_created
+func PostEvent(channel string, data proto.Message) { // account_created
 	subject := module + "." + channel
-	msg := Event{ParentID: ctx.ID}
+	msg := Event{}
 	if data, err := proto.Marshal(data); err == nil {
 		msg.Body = data
 	}
