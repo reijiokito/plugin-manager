@@ -56,8 +56,9 @@ func (es *eventStream) start() {
 			if messages, err := sub.Fetch(1); err == nil {
 				if len(messages) == 1 {
 					m := messages[0]
-					if _, ok := es.executors[m.Subject]; ok {
+					if executor, ok := es.executors[m.Subject]; ok {
 						log.Println("Execute successfully")
+						executor(m, 1)
 					}
 					m.Ack()
 				}

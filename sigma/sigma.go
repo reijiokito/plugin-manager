@@ -2,6 +2,9 @@ package sigma
 
 import (
 	"github.com/nats-io/nats.go"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 var Connection *nats.Conn
@@ -15,7 +18,7 @@ func Release() {
 
 func Start() {
 	startEventStream()
-	//sig := make(chan os.Signal, 1)
-	//signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-	//<-sig
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	<-sig
 }
