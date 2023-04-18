@@ -2,7 +2,7 @@ package main
 
 import (
 	"flag"
-	"github.com/reijiokito/plugin-manager/sigma"
+	"github.com/reijiokito/sigma-go-plugin/sigma"
 	"log"
 	"net/http"
 )

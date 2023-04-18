@@ -1,3 +1,2 @@
-protoc -I=. --go_out=../sigma core.proto
-protoc -I=. --go_out=../sigma sigma.proto
+#protoc -I=. --go_out=../core core.proto
 

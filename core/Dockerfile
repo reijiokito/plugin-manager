@@ -4,9 +4,9 @@ ENV GO111MODULE=on
 
 WORKDIR /workspace/core
 
-COPY ./manager/ ./manager
+COPY manager ./manager
 COPY ./core.go ./core.go
-COPY ./go.mod ./go.mod
+COPY go.mod ./go.mod
 
 RUN go mod tidy -v
 
