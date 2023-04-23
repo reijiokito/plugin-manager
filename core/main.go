@@ -2,7 +2,9 @@ package main
 
 import (
 	"flag"
-	"github.com/reijiokito/plugin-manager/sigma"
+	go_pdk "github.com/reijiokito/go-pdk"
+	"github.com/reijiokito/plugin-manager/core/proxy"
+
 	"log"
 	"net/http"
 )
@@ -18,20 +20,21 @@ func main() {
 
 	flag.Parse()
 
-	config := sigma.Configuration{
+	config := go_pdk.Configuration{
 		NatsUrl:      *natsUrl,
 		NatsUsername: *natsUsername,
 		NatsPassword: *natsPassword,
 	}
 
 	/* Init module */
-	sigma.Init(MODULE, &config)
-	defer sigma.Release()
+	go_pdk.Init(MODULE, &config)
+	defer go_pdk.Release()
 
 	//TODO: Implement APIs create/check/verify plugin
 
+	proxy_ := proxy.NewProxy()
 	log.Println("Sigma Plugin Manager Start with port " + *managerPort)
-	if err := http.ListenAndServe(":"+*managerPort, nil); err != nil {
+	if err := http.ListenAndServe(":"+*managerPort, proxy_); err != nil {
 		log.Fatal(err)
 	}
 

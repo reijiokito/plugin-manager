@@ -4,7 +4,7 @@
 // 	protoc        v3.21.12
 // source: core.proto
 
-package sigma
+package proto
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
