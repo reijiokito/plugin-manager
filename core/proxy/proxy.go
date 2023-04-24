@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"bytes"
+	"github.com/nats-io/nats.go"
 	go_pdk "github.com/reijiokito/go-pdk"
 	"google.golang.org/protobuf/proto"
 	"net/http"
@@ -9,12 +10,14 @@ import (
 )
 
 type Proxy struct {
-	Contexts go_pdk.HttpContextPool
+	Contexts   go_pdk.HttpContextPool
+	Connection *nats.Conn
 }
 
-func NewProxy() *Proxy {
+func NewProxy(pdk *go_pdk.PDK) *Proxy {
 	ret := &Proxy{
-		Contexts: go_pdk.NewContextPool(),
+		Contexts:   go_pdk.NewContextPool(),
+		Connection: pdk.Connection,
 	}
 	return ret
 }
@@ -46,7 +49,7 @@ func (proxy *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	/*post request to message queue*/
-	msg, respErr := go_pdk.Connection.Request(go_pdk.PublishURL(url), reqBytes, 10*time.Second)
+	msg, respErr := proxy.Connection.Request(go_pdk.PublishURL(url), reqBytes, 10*time.Second)
 	if respErr != nil {
 		http.Error(rw, "No response ", http.StatusInternalServerError)
 		return
@@ -64,6 +67,10 @@ func (proxy *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		http.Error(rw, "Cannot deserialize response", http.StatusInternalServerError)
 		return
 	}
+	if f, ok := rw.(http.Flusher); ok {
+		f.Flush()
+	}
+
 	if f, ok := rw.(http.Flusher); ok {
 		f.Flush()
 	}

@@ -8,9 +8,5 @@ message Configuration {
 string NatsUrl = 1;
 string NatsUsername = 2;
 string NatsPassword = 3;
-string DBHost = 4;
-string DBUsername = 5;
-string DBPassword = 6;
-string DBLocation = 7;
 }
 
