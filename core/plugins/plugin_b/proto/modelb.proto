@@ -1,0 +1,12 @@
+syntax = "proto3";
+package proto;
+option  optimize_for = CODE_SIZE;
+option  go_package = "./;proto";
+
+message HelloB {
+  string Name = 1;
+}
+
+message HandshakeB {
+  string Name = 1;
+}

@@ -3,7 +3,7 @@ module github.com/reijiokito/plugin-manager/core
 go 1.20
 
 require (
-	github.com/reijiokito/go-pdk v1.0.2
+	github.com/reijiokito/go-pdk v1.0.8
 	google.golang.org/protobuf v1.30.0
 )
 

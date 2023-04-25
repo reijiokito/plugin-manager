@@ -5,8 +5,10 @@ import (
 	"fmt"
 	go_pdk "github.com/reijiokito/go-pdk"
 	"github.com/reijiokito/plugin-manager/core/proxy"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"path/filepath"
 	"plugin"
 )
 
@@ -18,6 +20,8 @@ func main() {
 	natsUrl := flag.String("nats_url", "127.0.0.1", "Nats URL")
 	natsUsername := flag.String("nats_username", "", "Nats Username")
 	natsPassword := flag.String("nats_password", "", "Nats Password")
+
+	dir := flag.String("dir", "/usr/local/sigma/go-plugins", "Directory")
 
 	flag.Parse()
 
@@ -32,29 +36,37 @@ func main() {
 	defer pdk.Release()
 
 	//READ
-	p, err := plugin.Open("/home/cong/Downloads/24_4/plugin-manager/core/plugins/plugin_a/main")
+	pluginFiles, err := ioutil.ReadDir(*dir)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("failed to load plugin file: %v", err))
+		log.Fatalf("Error reading directory: %v", err)
 	}
+	for _, f := range pluginFiles {
+		pluginPath := filepath.Join(*dir, f.Name())
+		p, err := plugin.Open(pluginPath)
+		if err != nil {
+			log.Fatal(fmt.Sprintf("Failed to load plugin %s: %v\n", pluginPath, err))
+		}
 
-	// Look up the `MyFunction` symbol in the plugin.
-	initSymbol, err := p.Lookup("Access")
-	if err != nil {
-		log.Fatal(fmt.Errorf("failed to lookup MyFunction symbol: %v", err))
+		initSymbol, err := p.Lookup("Access")
+		if err != nil {
+			log.Fatal(fmt.Errorf("failed to lookup MyFunction symbol: %v", err))
+		}
+
+		pluginAccess, ok := initSymbol.(func(*go_pdk.PDK))
+		if !ok {
+			log.Fatal(fmt.Errorf("failed to convert MyFunc" +
+				"tion symbol to expected function signature"))
+		}
+
+		go exec(pluginAccess, pdk)
 	}
-
-	pluginAccess, ok := initSymbol.(func(*go_pdk.PDK))
-	if !ok {
-		log.Fatal(fmt.Errorf("failed to convert MyFunction symbol to expected function signature"))
-	}
-
-	go exec(pluginAccess, pdk)
 
 	proxy_ := proxy.NewProxy(pdk)
 	log.Println("Sigma Plugin Manager Start with port " + *managerPort)
 	if err := http.ListenAndServe(":"+*managerPort, proxy_); err != nil {
 		log.Fatal(err)
 	}
+
 }
 
 func exec(f func(*go_pdk.PDK), pdk *go_pdk.PDK) {
