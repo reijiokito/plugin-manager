@@ -11,11 +11,13 @@ import (
 func Access(pdk *go_pdk.PDK) {
 	go_pdk.RegisterService(pdk.Nats.Connection, "/user/newB", service.CreateNew)
 
-	for i := 0; i < 2000; i++ {
+	//Send event from Nats
+	pdk.Nats.PostEvent("manager.handshake", &proto.Handshake{Name: "HIHI"})
+
+	//Send from other plugin
+	for i := 0; i < 2; i++ {
 		go pdk.Chan.PostEvent("kkk", &proto2.HelloB{Name: fmt.Sprintf("kkk from plugin B - %v", i)})
 	}
-
-	pdk.Nats.PostEvent("manager.handshake", &proto.Handshake{Name: "HIHI"})
 
 	pdk.Start()
 }
