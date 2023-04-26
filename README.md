@@ -10,5 +10,7 @@ Sample:
 - cd /core
 - go run main.go
 
-
+Operation:
+- Receive event from http:
+    Call API: `http://localhost:8000/user/new`
 
