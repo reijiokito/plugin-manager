@@ -17,7 +17,7 @@ type Proxy struct {
 func NewProxy(pdk *go_pdk.PDK) *Proxy {
 	ret := &Proxy{
 		Contexts:   go_pdk.NewContextPool(),
-		Connection: pdk.Connection,
+		Connection: pdk.Nats.Connection,
 	}
 	return ret
 }
