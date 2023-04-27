@@ -70,8 +70,4 @@ func (proxy *Proxy) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if f, ok := rw.(http.Flusher); ok {
 		f.Flush()
 	}
-
-	if f, ok := rw.(http.Flusher); ok {
-		f.Flush()
-	}
 }
