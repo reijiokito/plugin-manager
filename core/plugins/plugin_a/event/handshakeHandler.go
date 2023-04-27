@@ -9,5 +9,5 @@ import (
 )
 
 func HandShakeHandler(ctx *go_pdk.Context, message *proto.Handshake) {
-	log.Println(fmt.Sprintf("Receive event Handshake from plugin A: %v", message))
+	log.Println(fmt.Sprintf("Receive event Handshake from plugin B: %v", message))
 }

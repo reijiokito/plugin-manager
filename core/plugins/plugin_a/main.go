@@ -9,9 +9,7 @@ import (
 func Access(pdk *go_pdk.PDK) {
 	go_pdk.RegisterService(pdk.Nats.Connection, "/user/new", service.CreateNew)
 
-	go_pdk.RegisterSubject("manager.handshake", event.HandShakeHandler)
-
 	go_pdk.RegisterSubject("kkk", service.Hi)
 
-	pdk.Start()
+	go_pdk.RegisterSubject("manager.handshake", event.HandShakeHandler)
 }

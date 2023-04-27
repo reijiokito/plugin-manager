@@ -61,6 +61,8 @@ func main() {
 		go exec(pluginAccess, pdk)
 	}
 
+	pdk.Start()
+
 	proxy_ := proxy.NewProxy(pdk)
 	log.Println("Sigma Plugin Manager Start with port " + *managerPort)
 	if err := http.ListenAndServe(":"+*managerPort, proxy_); err != nil {
