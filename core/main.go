@@ -1,18 +1,49 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	go_pdk "github.com/reijiokito/go-pdk"
 	"github.com/reijiokito/plugin-manager/core/proxy"
-	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"path"
 	"path/filepath"
-	"plugin"
+	"runtime"
+	"strings"
 )
 
+var version = "development"
+
 const MODULE = "manager"
+
+var (
+	dump           = flag.String("dump-plugin-info", "", "Dump info about `plugin`")
+	dumpAllPlugins = flag.Bool("dump-all-plugins", true, "Dump info about all available plugins")
+	pluginsDir     = flag.String("plugins-directory", "/usr/local/sigma/go-plugins", "Set directory `path` where to search plugins")
+)
+
+func printVersion() {
+	fmt.Printf("Version: %s\nRuntime Version: %s\n", version, runtime.Version())
+}
+
+func dumpInfo() {
+	s := newServer()
+
+	info, err := s.GetPluginInfo(*dump)
+	if err != nil {
+		log.Printf("%s", err)
+	}
+
+	fmt.Println("Dump info plufin: " + info.Name)
+
+}
+
+func isParentAlive() bool {
+	return os.Getppid() != 1 // assume ppid 1 means process was adopted by init
+}
 
 func main() {
 	managerPort := flag.String("manager_port", "8000", "Manager Port")
@@ -21,7 +52,7 @@ func main() {
 	natsUsername := flag.String("nats_username", "", "Nats Username")
 	natsPassword := flag.String("nats_password", "", "Nats Password")
 
-	dir := flag.String("dir", "/usr/local/sigma/go-plugins", "Directory")
+	//dir := flag.String("dir", "/usr/local/sigma/go-plugins", "Directory")
 
 	flag.Parse()
 
@@ -35,30 +66,53 @@ func main() {
 	pdk := go_pdk.Init(MODULE, &config)
 	defer pdk.Release()
 
-	//READ
-	pluginFiles, err := ioutil.ReadDir(*dir)
+	s := newServer()
+	fmt.Println("------Dump All plufin------")
+	pluginPaths, err := filepath.Glob(path.Join(s.pluginsDir, "/*.so"))
 	if err != nil {
-		log.Fatalf("Error reading directory: %v", err)
+		log.Printf("can't get plugin names from %s: %s", s.pluginsDir, err)
+		return
 	}
-	for _, f := range pluginFiles {
-		pluginPath := filepath.Join(*dir, f.Name())
-		p, err := plugin.Open(pluginPath)
+	infos := make([]PluginInfo, len(pluginPaths))
+	for i, pluginPath := range pluginPaths {
+		pluginName := strings.TrimSuffix(path.Base(pluginPath), ".so")
+
+		x, err := s.GetPluginInfo(pluginName)
 		if err != nil {
-			log.Fatal(fmt.Sprintf("Failed to load plugin %s: %v\n", pluginPath, err))
+			log.Printf("can't load Plugin %s: %s", pluginName, err)
+			continue
 		}
+		infos[i] = *x
+		fmt.Println("Dump info plufin: " + infos[i].Name)
 
-		initSymbol, err := p.Lookup("Access")
+	}
+
+	type Config struct {
+		Address string
+	}
+
+	cf := Config{
+		Address: "CONFIG",
+	}
+
+	c, err := json.Marshal(cf)
+	if err != nil {
+		return
+	}
+
+	for _, val := range s.plugins {
+		instance, err := s.StartInstance(PluginConfig{
+			Name:   val.name,
+			Config: c,
+		})
 		if err != nil {
-			log.Fatal(fmt.Errorf("failed to lookup MyFunction symbol: %v", err))
+			return
 		}
+		defer s.CloseInstance(instance.Id)
+	}
 
-		pluginAccess, ok := initSymbol.(func(*go_pdk.PDK))
-		if !ok {
-			log.Fatal(fmt.Errorf("failed to convert MyFunc" +
-				"tion symbol to expected function signature"))
-		}
-
-		go exec(pluginAccess, pdk)
+	for _, val := range s.instances {
+		go exec(val.handlers["access"], pdk)
 	}
 
 	pdk.Start()

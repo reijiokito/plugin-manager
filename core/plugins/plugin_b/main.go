@@ -8,7 +8,17 @@ import (
 	"github.com/reijiokito/plugin-manager/core/plugins/plugin_b/service"
 )
 
-func Access(pdk *go_pdk.PDK) {
+type Config struct {
+	Name string
+}
+
+func New() interface{} {
+	return &Config{}
+}
+
+func (conf Config) Access(pdk *go_pdk.PDK) {
+	fmt.Print("Plugin: " + conf.Name)
+
 	go_pdk.RegisterService(pdk.Nats.Connection, "/user/newB", service.CreateNew)
 
 	//Send event from Nats
