@@ -3,9 +3,7 @@ package main
 import (
 	"fmt"
 	go_pdk "github.com/reijiokito/go-pdk"
-	"github.com/reijiokito/plugin-manager/core/plugins/plugin_a/proto"
-	proto2 "github.com/reijiokito/plugin-manager/core/plugins/plugin_b/proto"
-	"github.com/reijiokito/plugin-manager/core/plugins/plugin_b/service"
+	"github.com/reijiokito/plugin-manager/core/plugins/plugin_a/service"
 )
 
 type Config struct {
@@ -17,18 +15,23 @@ func New() interface{} {
 }
 
 func (conf Config) Access(pdk *go_pdk.PDK) {
-	fmt.Print("Plugin: " + conf.Name)
+	go_pdk.RegisterSubject("kkk", service.Hi)
 
-	go_pdk.RegisterService(pdk.Nats.Connection, "/user/newB", service.CreateNew)
+	subject := "Here"
 
-	//Send event from Nats
-	pdk.PostEvent("manager.handshake", &proto.Handshake{Name: "HIHI"}, go_pdk.Scope{
-		Local: true,
-	})
+	s := go_pdk.Server.Plugins["plugin_a"].Callers["Request"](subject, "")
+	fmt.Println(s)
 
-	//Send from other plugin
-	pdk.PostEvent("kkk", &proto2.HelloB{Name: fmt.Sprintf("kkk from plugin B ")}, go_pdk.Scope{
-		Local: true,
-	})
+}
 
+func GetServices() map[string]func(...interface{}) {
+	services := make(map[string]func(...interface{}))
+
+	return services
+}
+
+func GetCallers() map[string]func(...interface{}) interface{} {
+	callers := make(map[string]func(...interface{}) interface{})
+
+	return callers
 }

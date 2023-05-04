@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 var version = "development"
@@ -30,9 +31,7 @@ func printVersion() {
 }
 
 func dumpInfo() {
-	s := newServer()
-
-	info, err := s.GetPluginInfo(*dump)
+	info, err := go_pdk.Server.GetPluginInfo(*dump)
 	if err != nil {
 		log.Printf("%s", err)
 	}
@@ -48,51 +47,41 @@ func isParentAlive() bool {
 func main() {
 	managerPort := flag.String("manager_port", "8000", "Manager Port")
 
-	natsUrl := flag.String("nats_url", "127.0.0.1", "Nats URL")
-	natsUsername := flag.String("nats_username", "", "Nats Username")
-	natsPassword := flag.String("nats_password", "", "Nats Password")
-
-	//dir := flag.String("dir", "/usr/local/sigma/go-plugins", "Directory")
-
-	flag.Parse()
-
-	config := go_pdk.Configuration{
-		NatsUrl:      *natsUrl,
-		NatsUsername: *natsUsername,
-		NatsPassword: *natsPassword,
-	}
-
 	/* Init module */
-	pdk := go_pdk.Init(MODULE, &config)
+	pdk := go_pdk.Init(*pluginsDir)
 	defer pdk.Release()
 
-	s := newServer()
-	fmt.Println("------Dump All plufin------")
-	pluginPaths, err := filepath.Glob(path.Join(s.pluginsDir, "/*.so"))
+	pdk.Start()
+
+	time.Sleep(time.Second)
+
+	fmt.Println("------Dump All plugin------")
+	pluginPaths, err := filepath.Glob(path.Join(go_pdk.Server.PluginsDir, "/*.so"))
 	if err != nil {
-		log.Printf("can't get plugin names from %s: %s", s.pluginsDir, err)
+		log.Printf("can't get plugin names from %s: %s", go_pdk.Server.PluginsDir, err)
 		return
 	}
-	infos := make([]PluginInfo, len(pluginPaths))
+	infos := make([]go_pdk.PluginInfo, len(pluginPaths))
 	for i, pluginPath := range pluginPaths {
 		pluginName := strings.TrimSuffix(path.Base(pluginPath), ".so")
 
-		x, err := s.GetPluginInfo(pluginName)
+		x, err := go_pdk.Server.GetPluginInfo(pluginName)
 		if err != nil {
 			log.Printf("can't load Plugin %s: %s", pluginName, err)
 			continue
 		}
 		infos[i] = *x
-		fmt.Println("Dump info plufin: " + infos[i].Name)
+		fmt.Println("Dump info plugin: " + infos[i].Name)
+		fmt.Println(fmt.Sprintf("Dump info plugin: %v", infos[i].Schema))
 
 	}
 
 	type Config struct {
-		Address string
+		Name string
 	}
 
 	cf := Config{
-		Address: "CONFIG",
+		Name: "CONFIG",
 	}
 
 	c, err := json.Marshal(cf)
@@ -100,29 +89,26 @@ func main() {
 		return
 	}
 
-	for _, val := range s.plugins {
-		instance, err := s.StartInstance(PluginConfig{
-			Name:   val.name,
+	for _, val := range go_pdk.Server.Plugins {
+		instance, err := go_pdk.Server.StartInstance(go_pdk.PluginConfig{
+			Name:   val.Name,
 			Config: c,
 		})
 		if err != nil {
 			return
 		}
-		defer s.CloseInstance(instance.Id)
+		defer go_pdk.Server.CloseInstance(instance.Id)
 	}
 
-	for _, val := range s.instances {
-		go exec(val.handlers["access"], pdk)
+	for _, val := range go_pdk.Server.Instances {
+		go exec(val.Handlers["access"], pdk)
 	}
-
-	pdk.Start()
 
 	proxy_ := proxy.NewProxy(pdk)
 	log.Println("Sigma Plugin Manager Start with port " + *managerPort)
 	if err := http.ListenAndServe(":"+*managerPort, proxy_); err != nil {
 		log.Fatal(err)
 	}
-
 }
 
 func exec(f func(*go_pdk.PDK), pdk *go_pdk.PDK) {
