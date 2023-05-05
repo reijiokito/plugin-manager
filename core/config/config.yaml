@@ -1,5 +1,5 @@
 plugins:
-  - builtin:
+  - builtIn:
     - nats
   - service:
     - plugin_a

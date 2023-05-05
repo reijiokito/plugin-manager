@@ -22,16 +22,14 @@ var (
 	configDir      = flag.String("config-plugin-directory", "/home/cong/Downloads/24_4/plugin-manager/core/config/", "Set config directory `path` where to load plugin configs")
 )
 
-var configPlugins map[string][]byte
+var configPlugins [2]map[string][]byte
 
 func dumpInfo() {
 	info, err := go_pdk.Server.GetPluginInfo(*dump)
 	if err != nil {
 		log.Printf("%s", err)
 	}
-
 	fmt.Println("Dump info plufin: " + info.Name)
-
 }
 
 func dumpAllInfo() []go_pdk.PluginInfo {
@@ -51,7 +49,6 @@ func dumpAllInfo() []go_pdk.PluginInfo {
 			continue
 		}
 		infos[i] = *x
-		fmt.Println(fmt.Sprintf("Dump info plugin: %v", infos[i].Schema))
 	}
 	return infos
 }
@@ -63,11 +60,11 @@ func dumpBuiltInConfig(configDir string) {
 	}
 
 	type Plugin struct {
-		BuiltIn []string `yaml:"builtin"`
+		BuiltIn []string `yaml:"builtIn"`
 		Service []string `yaml:"service"`
 	}
 	type Config struct {
-		Plugin []Plugin `yaml:"plugins"`
+		Plugins []Plugin `yaml:"plugins"`
 	}
 
 	var cfg Config
@@ -76,25 +73,22 @@ func dumpBuiltInConfig(configDir string) {
 		log.Fatal(err)
 	}
 
-	fmt.Println(cfg)
-
-	//Load built-in plugin
-	for _, val := range cfg.Plugin[0].BuiltIn {
-		config, err := ioutil.ReadFile(configDir + "/build_in/" + val + ".yaml")
+	//Load built-in config
+	for _, val := range cfg.Plugins[0].BuiltIn {
+		config, err := ioutil.ReadFile(configDir + "/plugins/" + val + ".yaml")
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		configPlugins[val] = config
+		configPlugins[0][val] = config
 	}
 
-	//Load service plugin
-	for _, val := range cfg.Plugin[0].Service {
-		config, err := ioutil.ReadFile(configDir + "/build_in/" + val + ".yaml")
+	//Load service config
+	for _, val := range cfg.Plugins[1].Service {
+		config, err := ioutil.ReadFile(configDir + "/plugins/" + val + ".yaml")
 		if err != nil {
 			log.Fatal(err)
 		}
-		configPlugins[val] = config
+		configPlugins[1][val] = config
 	}
 
 }
@@ -110,20 +104,17 @@ func main() {
 	dumpAllInfo()
 
 	//Read config from plugins
-	configPlugins = make(map[string][]byte)
+	for i := 0; i < 2; i++ {
+		configPlugins[i] = make(map[string][]byte)
+	}
 	dumpBuiltInConfig(*configDir)
 
 	//Initialize built-in plugin
 	for _, val := range go_pdk.Server.Plugins {
 		if val.Name == "nats" {
-			type Config struct {
-				NatsUrl      string
-				NatsUsername string
-				NatsPassword string
-			}
 			_, err := go_pdk.Server.StartInstance(go_pdk.PluginConfig{
 				Name:   val.Name,
-				Config: configPlugins[val.Name],
+				Config: configPlugins[0][val.Name],
 			})
 			if err != nil {
 				return
@@ -136,6 +127,7 @@ func main() {
 			exec(val.Handlers["access"], pdk)
 		}
 	}
+
 	time.Sleep(time.Second)
 
 	//Initialize plugins
@@ -143,7 +135,7 @@ func main() {
 		if val.Name != "nats" {
 			_, err := go_pdk.Server.StartInstance(go_pdk.PluginConfig{
 				Name:   val.Name,
-				Config: configPlugins[val.Name],
+				Config: configPlugins[1][val.Name],
 			})
 			if err != nil {
 				return
