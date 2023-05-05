@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	go_pdk "github.com/reijiokito/go-pdk"
-	"github.com/reijiokito/plugin-manager/core/plugins/plugin_a/service"
+	"time"
 )
 
 type Config struct {
-	Name string
+	Name string `yaml:"name"`
 }
 
 func New() interface{} {
@@ -15,13 +15,13 @@ func New() interface{} {
 }
 
 func (conf Config) Access(pdk *go_pdk.PDK) {
-	go_pdk.RegisterSubject("kkk", service.Hi)
+	fmt.Println("Plugin: ", conf.Name)
 
-	subject := "Here"
-
-	s := go_pdk.Server.Plugins["plugin_a"].Callers["Request"](subject, "")
-	fmt.Println(s)
-
+	//go_pdk.RegisterSubject("kkk", service.Hi)
+	for i := 0; i < 5; i++ {
+		go_pdk.Server.Plugins["nats"].Services["Publish"]("hello", []byte(fmt.Sprintf("Hello from plugin B %v", i)))
+		time.Sleep(time.Second)
+	}
 }
 
 func GetServices() map[string]func(...interface{}) {

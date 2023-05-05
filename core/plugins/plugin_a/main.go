@@ -3,12 +3,12 @@ package main
 import (
 	"fmt"
 	"github.com/reijiokito/go-pdk"
-	proto2 "github.com/reijiokito/plugin-manager/core/plugins/plugin_b/proto"
+	proto2 "github.com/reijiokito/plugin-manager/core/plugins/plugin_a/proto"
 	"google.golang.org/protobuf/proto"
 )
 
 type Config struct {
-	Name string
+	Name string `yaml:"name"`
 }
 
 func New() interface{} {
@@ -30,9 +30,12 @@ func GetCallers() map[string]func(...interface{}) interface{} {
 }
 
 func (conf Config) Access(pdk *go_pdk.PDK) {
-	pdk.PostEvent("kkk", &proto2.HelloB{Name: fmt.Sprintf("kkk from plugin B ")}, go_pdk.Scope{
-		Local: true,
-	})
+	fmt.Println("Plugin: ", conf.Name)
+
+	//pdk.PostEvent("kkk", &proto2.HelloB{Name: fmt.Sprintf("kkk from plugin B ")}, go_pdk.Scope{
+	//	Local: true,
+	//})
+	go_pdk.Server.Plugins["nats"].Services["Subscribe"]("hello")
 
 }
 
@@ -46,4 +49,10 @@ func PostEvent(args ...interface{}) { // account_created
 
 func Request(args ...interface{}) interface{} {
 	return "ok"
+}
+
+type SubjectHandler func(data proto.Message)
+
+func Hello(message *proto2.Hello) {
+	fmt.Println("Receive message: " + message.Name)
 }

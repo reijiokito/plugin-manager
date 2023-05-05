@@ -3,7 +3,7 @@ module github.com/reijiokito/plugin-manager/core
 go 1.20
 
 require (
-	github.com/reijiokito/go-pdk v1.1.10
+	github.com/reijiokito/go-pdk v1.1.11
 	google.golang.org/protobuf v1.30.0
 )
 
@@ -20,4 +20,5 @@ require (
 	golang.org/x/crypto v0.7.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

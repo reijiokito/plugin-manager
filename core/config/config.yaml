@@ -1,5 +1,6 @@
-name: plugin_b
-config:
-  fields:
-    - name:
-       type: string
+plugins:
+  - builtin:
+    - nats
+  - service:
+    - plugin_a
+    - plugin_b
