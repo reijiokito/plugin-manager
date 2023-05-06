@@ -31,8 +31,15 @@ func dumpInfo(name string) {
 	if err != nil {
 		log.Printf("%s", err)
 	}
-	pluginInfos = append(pluginInfos, *info)
+
 	fmt.Println(fmt.Sprintf("Dump info plufin: %s", info.Name))
+	for i, _ := range pluginInfos {
+		if pluginInfos[i].Name == info.Name {
+			pluginInfos[i] = *info
+			return
+		}
+	}
+	pluginInfos = append(pluginInfos, *info)
 }
 
 func dumpAllInfo() {
@@ -240,10 +247,12 @@ func main() {
 		dumpInfo(data.Name)
 		dumpPluginConfig(data.Name)
 
+		var instanceId int
+
 		for _, val := range go_pdk.Server.Plugins {
 			if val.Name == data.Name {
 				if _, ok := configPlugins[1][data.Name]; ok {
-					_, err := go_pdk.Server.StartInstance(go_pdk.PluginConfig{
+					status, err := go_pdk.Server.StartInstance(go_pdk.PluginConfig{
 						Name:   val.Name,
 						Config: configPlugins[1][data.Name],
 					})
@@ -251,13 +260,15 @@ func main() {
 						log.Println(fmt.Sprintf("Start instance err: %v", err))
 						return
 					}
+
+					instanceId = status.Id
 				}
 			}
 
 		}
 
 		for _, val := range go_pdk.Server.Instances {
-			if val.Plugin.Name == data.Name {
+			if val.Plugin.Name == data.Name && val.Id == instanceId {
 				if _, ok := configPlugins[1][data.Name]; ok {
 					go exec(val.Handlers["access"], pdk)
 				}
