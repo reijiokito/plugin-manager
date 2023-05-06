@@ -4,11 +4,9 @@ import (
 	"flag"
 	"fmt"
 	go_pdk "github.com/reijiokito/go-pdk"
-	"github.com/reijiokito/plugin-manager/core/proxy"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"path"
 	"path/filepath"
 	"strings"
@@ -20,6 +18,7 @@ var (
 	dumpAllPlugins = flag.Bool("dump-all-plugins", true, "Dump info about all available plugins")
 	pluginsDir     = flag.String("plugins-directory", "/usr/local/sigma/go-plugins", "Set directory `path` where to search plugins")
 	configDir      = flag.String("config-plugin-directory", "/home/cong/Downloads/24_4/plugin-manager/core/config/", "Set config directory `path` where to load plugin configs")
+	managerPort    = flag.String("manager_port", "8000", "Manager Port")
 )
 
 var configPlugins [2]map[string][]byte
@@ -93,9 +92,50 @@ func dumpBuiltInConfig(configDir string) {
 
 }
 
-func main() {
-	managerPort := flag.String("manager_port", "8000", "Manager Port")
+func initBuildInPlugin(pdk *go_pdk.PDK) {
+	for _, val := range go_pdk.Server.Plugins {
+		if _, ok := configPlugins[0][val.Name]; ok {
+			_, err := go_pdk.Server.StartInstance(go_pdk.PluginConfig{
+				Name:   val.Name,
+				Config: configPlugins[0][val.Name],
+			})
+			if err != nil {
+				return
+			}
+		}
+	}
+	for _, val := range go_pdk.Server.Instances {
+		if _, ok := configPlugins[0][val.Plugin.Name]; ok {
+			exec(val.Handlers["access"], pdk)
+		}
+	}
+}
 
+func initServicePlugin(pdk *go_pdk.PDK) {
+	for _, val := range go_pdk.Server.Plugins {
+		if _, ok := configPlugins[1][val.Name]; ok {
+			_, err := go_pdk.Server.StartInstance(go_pdk.PluginConfig{
+				Name:   val.Name,
+				Config: configPlugins[1][val.Name],
+			})
+			if err != nil {
+				return
+			}
+		}
+	}
+
+	for _, val := range go_pdk.Server.Instances {
+		if _, ok := configPlugins[1][val.Plugin.Name]; ok {
+			exec(val.Handlers["access"], pdk)
+		}
+	}
+}
+
+func exec(f func(*go_pdk.PDK), pdk *go_pdk.PDK) {
+	f(pdk)
+}
+
+func main() {
 	/* Init module */
 	pdk := go_pdk.Init(*pluginsDir)
 	defer pdk.Release()
@@ -110,54 +150,13 @@ func main() {
 	dumpBuiltInConfig(*configDir)
 
 	//Initialize built-in plugin
-	for _, val := range go_pdk.Server.Plugins {
-		if val.Name == "nats" {
-			_, err := go_pdk.Server.StartInstance(go_pdk.PluginConfig{
-				Name:   val.Name,
-				Config: configPlugins[0][val.Name],
-			})
-			if err != nil {
-				return
-			}
-
-		}
-	}
-	for _, val := range go_pdk.Server.Instances {
-		if val.Plugin.Name == "nats" {
-			exec(val.Handlers["access"], pdk)
-		}
-	}
+	initBuildInPlugin(pdk)
 
 	time.Sleep(time.Second)
 
-	//Initialize plugins
-	for _, val := range go_pdk.Server.Plugins {
-		if val.Name != "nats" {
-			_, err := go_pdk.Server.StartInstance(go_pdk.PluginConfig{
-				Name:   val.Name,
-				Config: configPlugins[1][val.Name],
-			})
-			if err != nil {
-				return
-			}
-		}
-	}
-
-	for _, val := range go_pdk.Server.Instances {
-		if val.Plugin.Name != "nats" {
-			exec(val.Handlers["access"], pdk)
-		}
-	}
+	//Initialize service plugins
+	initServicePlugin(pdk)
 
 	//pdk.Start()
 
-	proxy_ := proxy.NewProxy(pdk)
-	log.Println("Sigma Plugin Manager Start with port " + *managerPort)
-	if err := http.ListenAndServe(":"+*managerPort, proxy_); err != nil {
-		log.Fatal(err)
-	}
-}
-
-func exec(f func(*go_pdk.PDK), pdk *go_pdk.PDK) {
-	f(pdk)
 }
