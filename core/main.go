@@ -3,10 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	go_pdk "github.com/reijiokito/go-pdk"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"log"
+	"net/http"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -14,32 +17,33 @@ import (
 )
 
 var (
-	dump           = flag.String("dump-plugin-info", "", "Dump info about `plugin`")
 	dumpAllPlugins = flag.Bool("dump-all-plugins", true, "Dump info about all available plugins")
 	pluginsDir     = flag.String("plugins-directory", "/usr/local/sigma/go-plugins", "Set directory `path` where to search plugins")
 	configDir      = flag.String("config-plugin-directory", "/home/cong/Downloads/24_4/plugin-manager/core/config/", "Set config directory `path` where to load plugin configs")
-	managerPort    = flag.String("manager_port", "8000", "Manager Port")
+	managerPort    = flag.String("manager_port", "localhost:8000", "Manager Port")
 )
 
 var configPlugins [2]map[string][]byte
+var pluginInfos []go_pdk.PluginInfo
 
-func dumpInfo() {
-	info, err := go_pdk.Server.GetPluginInfo(*dump)
+func dumpInfo(name string) {
+	info, err := go_pdk.Server.GetPluginInfo(name)
 	if err != nil {
 		log.Printf("%s", err)
 	}
-	fmt.Println("Dump info plufin: " + info.Name)
+	pluginInfos = append(pluginInfos, *info)
+	fmt.Println(fmt.Sprintf("Dump info plufin: %s", info.Name))
 }
 
-func dumpAllInfo() []go_pdk.PluginInfo {
+func dumpAllInfo() {
 	fmt.Println("------Dump All plugin------")
 	pluginPaths, err := filepath.Glob(path.Join(go_pdk.Server.PluginsDir, "/*.so"))
 	if err != nil {
 		log.Printf("can't get plugin names from %s: %s", go_pdk.Server.PluginsDir, err)
-		return nil
+		return
 	}
-	infos := make([]go_pdk.PluginInfo, len(pluginPaths))
-	for i, pluginPath := range pluginPaths {
+
+	for _, pluginPath := range pluginPaths {
 		pluginName := strings.TrimSuffix(path.Base(pluginPath), ".so")
 
 		x, err := go_pdk.Server.GetPluginInfo(pluginName)
@@ -47,13 +51,20 @@ func dumpAllInfo() []go_pdk.PluginInfo {
 			log.Printf("can't load Plugin %s: %s", pluginName, err)
 			continue
 		}
-		infos[i] = *x
+		pluginInfos = append(pluginInfos, *x)
 	}
-	return infos
 }
 
-func dumpBuiltInConfig(configDir string) {
-	data, err := ioutil.ReadFile(configDir + "config.yaml")
+func dumpPluginConfig(name string) {
+	config, err := os.ReadFile(*configDir + "/plugins/" + name + ".yaml")
+	if err != nil {
+		log.Fatal(err)
+	}
+	configPlugins[1][name] = config
+}
+
+func dumpAllPluginConfig() {
+	data, err := os.ReadFile(*configDir + "config.yaml")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -74,7 +85,7 @@ func dumpBuiltInConfig(configDir string) {
 
 	//Load built-in config
 	for _, val := range cfg.Plugins[0].BuiltIn {
-		config, err := ioutil.ReadFile(configDir + "/plugins/" + val + ".yaml")
+		config, err := os.ReadFile(*configDir + "/plugins/" + val + ".yaml")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -83,7 +94,7 @@ func dumpBuiltInConfig(configDir string) {
 
 	//Load service config
 	for _, val := range cfg.Plugins[1].Service {
-		config, err := ioutil.ReadFile(configDir + "/plugins/" + val + ".yaml")
+		config, err := os.ReadFile(*configDir + "/plugins/" + val + ".yaml")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -143,11 +154,11 @@ func main() {
 	//Dump all existed plugins info
 	dumpAllInfo()
 
-	//Read config from plugins
+	//Read plugin configs
 	for i := 0; i < 2; i++ {
 		configPlugins[i] = make(map[string][]byte)
 	}
-	dumpBuiltInConfig(*configDir)
+	dumpAllPluginConfig()
 
 	//Initialize built-in plugin
 	initBuildInPlugin(pdk)
@@ -158,5 +169,106 @@ func main() {
 	initServicePlugin(pdk)
 
 	//pdk.Start()
+
+	r := gin.Default()
+
+	r.GET("/plugin/get-all-info", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"data": pluginInfos,
+		})
+	})
+
+	r.GET("/plugin/get-all-instance-info", func(c *gin.Context) {
+		type InstanceInfo struct {
+			Id                int
+			Name              string
+			Modtime           time.Time
+			Loadtime          time.Time
+			LastStartInstance time.Time
+			LastCloseInstance time.Time
+		}
+
+		var list []InstanceInfo
+
+		for key, value := range go_pdk.Server.Instances {
+			list = append(list, InstanceInfo{
+				Id:                key,
+				Name:              value.Plugin.Name,
+				Modtime:           value.Plugin.Modtime,
+				Loadtime:          value.Plugin.Loadtime,
+				LastStartInstance: value.Plugin.LastStartInstance,
+				LastCloseInstance: value.Plugin.LastCloseInstance,
+			})
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"data": list,
+		})
+	})
+
+	r.POST("/plugin/init", func(c *gin.Context) {
+		body, err := ioutil.ReadAll(c.Request.Body)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
+			return
+		}
+
+		type Config struct {
+			Name   string      `json:"name"`
+			Config interface{} `json:"config"`
+		}
+
+		// Create a YAML file
+		var data Config
+		err = yaml.Unmarshal(body, &data)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to unmarshal YAML"})
+			return
+		}
+		yamlData, err := yaml.Marshal(data.Config)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to marshal YAML"})
+			return
+		}
+		err = os.WriteFile(*configDir+"/plugins/"+data.Name+".yaml", yamlData, 0644)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create YAML file"})
+			return
+		}
+
+		//Start instance
+		dumpInfo(data.Name)
+		dumpPluginConfig(data.Name)
+
+		for _, val := range go_pdk.Server.Plugins {
+			if val.Name == data.Name {
+				if _, ok := configPlugins[1][data.Name]; ok {
+					_, err := go_pdk.Server.StartInstance(go_pdk.PluginConfig{
+						Name:   val.Name,
+						Config: configPlugins[1][data.Name],
+					})
+					if err != nil {
+						log.Println(fmt.Sprintf("Start instance err: %v", err))
+						return
+					}
+				}
+			}
+
+		}
+
+		for _, val := range go_pdk.Server.Instances {
+			if val.Plugin.Name == data.Name {
+				if _, ok := configPlugins[1][data.Name]; ok {
+					go exec(val.Handlers["access"], pdk)
+				}
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"data": "Success",
+		})
+	})
+
+	r.Run(*managerPort)
 
 }

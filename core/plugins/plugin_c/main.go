@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	go_pdk "github.com/reijiokito/go-pdk"
+	"time"
 )
 
 type Config struct {
-	Name string `yaml:"name"`
+	Add string `yaml:"add"`
+	Url string `yaml:"url"`
 }
 
 func New() interface{} {
@@ -14,13 +16,13 @@ func New() interface{} {
 }
 
 func (conf Config) Access(pdk *go_pdk.PDK) {
-	fmt.Println("Plugin: ", conf.Name)
+	fmt.Println("Plugin: ", conf.Add)
+	fmt.Println("Plugin: ", conf.Url)
+	for i := 0; i < 5; i++ {
+		go_pdk.Server.Plugins["nats"].Services["Publish"]("hello", []byte(fmt.Sprintf("Hello from plugin B %v", i)))
+		time.Sleep(time.Second)
+	}
 
-	//go_pdk.RegisterSubject("kkk", service.Hi)
-	//for i := 0; i < 5; i++ {
-	//	go_pdk.Server.Plugins["nats"].Services["Publish"]("hello", []byte(fmt.Sprintf("Hello from plugin B %v", i)))
-	//	time.Sleep(time.Second)
-	//}
 }
 
 func GetServices() map[string]func(...interface{}) {
