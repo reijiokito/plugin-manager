@@ -23,6 +23,8 @@ func (conf Config) Access(pdk *go_pdk.PDK) {
 		go_pdk.Server.Plugins["nats"].Services["Publish"](conf.Subject, []byte(fmt.Sprintf("Hello from plugin C %v", i)))
 	}
 
+	data := go_pdk.Server.Plugins["nats"].Callers["Request"]("/create/user", []byte("Request from C"))
+	fmt.Println("Data: ", string(data.([]byte)))
 }
 
 func GetServices() map[string]func(...interface{}) {

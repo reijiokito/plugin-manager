@@ -7,6 +7,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"log"
 	"strings"
+	"time"
 )
 
 var Connection *nats.Conn
@@ -53,21 +54,33 @@ func (conf Config) Access(pdk *go_pdk.PDK) {
 	}
 }
 
-//
-//func Request(args ...interface{}) interface{} {
-//	url := args[0].(string)
-//	reqBytes := args[1].([]byte)
-//
-//	msg, respErr := Connection.Request(go_pdk.PublishURL(url), reqBytes, 10*time.Second)
-//	if respErr != nil {
-//		return nil
-//	}
-//
-//	if err := proto.Unmarshal(msg.Data, &ctx.Response); err != nil {
-//		http.Error(rw, "Cannot deserialize response", http.StatusInternalServerError)
-//		return
-//	}
-//}
+func Request(args ...interface{}) interface{} {
+	url := args[0].(string)
+	reqBytes := args[1].([]byte)
+
+	msg, respErr := Connection.Request(go_pdk.PublishURL(url), reqBytes, 10*time.Second)
+	if respErr != nil {
+		return nil
+	}
+
+	return msg.Data
+}
+
+func QueueSubscribe(args ...interface{}) {
+	url := args[0].(string)
+
+	_, err := Connection.QueueSubscribe(go_pdk.SubscriberURL(url), "API", func(m *nats.Msg) {
+		fmt.Printf("QueueSubcribe a message: %s\n", string(m.Data))
+		err := Connection.Publish(m.Reply, m.Data)
+		if err != nil {
+			log.Println(fmt.Sprintf("Nats publish to [%s] error: %s", m.Reply, err.Error()))
+		}
+	})
+
+	if err != nil {
+		log.Println("Can not register service:", url)
+	}
+}
 
 func Publish(args ...interface{}) {
 	subject := args[0].(string)
@@ -179,12 +192,14 @@ func GetServices() map[string]func(...interface{}) {
 	services["Release"] = Release
 	services["PostEvent"] = PostEvent
 	services["StartEventStream"] = StartEventStream
+	services["QueueSubscribe"] = QueueSubscribe
 
 	return services
 }
 
 func GetCallers() map[string]func(...interface{}) interface{} {
 	callers := make(map[string]func(...interface{}) interface{})
+	callers["Request"] = Request
 
 	return callers
 }
