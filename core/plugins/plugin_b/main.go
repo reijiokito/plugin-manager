@@ -16,6 +16,7 @@ func New() interface{} {
 func (conf Config) Access(pdk *go_pdk.PDK) {
 	fmt.Println("Plugin: ", conf.Name)
 
+	go_pdk.Server.Plugins["nats"].Services["Subscribe"]("hihi")
 }
 
 func GetServices() map[string]func(...interface{}) {

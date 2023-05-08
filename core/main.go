@@ -26,23 +26,26 @@ var (
 var configPlugins [2]map[string][]byte
 var pluginInfos []go_pdk.PluginInfo
 
-func dumpInfo(name string) {
+func dumpInfo(name string) *go_pdk.PluginInfo {
 	info, err := go_pdk.Server.GetPluginInfo(name)
 	if err != nil {
 		log.Printf("%s", err)
 	}
 
-	fmt.Println(fmt.Sprintf("Dump info plufin: %s", info.Name))
+	fmt.Println(fmt.Sprintf("Dump info plufin: %v", info.Name))
 	for i, _ := range pluginInfos {
 		if pluginInfos[i].Name == info.Name {
 			pluginInfos[i] = *info
-			return
+			return &pluginInfos[i]
 		}
 	}
 	pluginInfos = append(pluginInfos, *info)
+
+	return info
 }
 
 func dumpAllInfo() {
+	pluginInfos = pluginInfos[:0]
 	fmt.Println("------Dump All plugin------")
 	pluginPaths, err := filepath.Glob(path.Join(go_pdk.Server.PluginsDir, "/*.so"))
 	if err != nil {
@@ -180,6 +183,21 @@ func main() {
 	//pdk.Start()
 
 	r := gin.Default()
+
+	r.POST("/plugin/dump/:name", func(c *gin.Context) {
+		name := c.Param("name")
+		info := dumpInfo(name)
+		c.JSON(http.StatusOK, gin.H{
+			"data": info,
+		})
+	})
+
+	r.POST("/plugin/dump-all", func(c *gin.Context) {
+		dumpAllInfo()
+		c.JSON(http.StatusOK, gin.H{
+			"data": pluginInfos,
+		})
+	})
 
 	r.GET("/plugin/get-all", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{

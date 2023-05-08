@@ -4,3 +4,4 @@ plugins:
   - service:
     - plugin_a
     - plugin_b
+    - plugin_c
