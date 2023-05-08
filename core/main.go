@@ -269,15 +269,31 @@ func main() {
 		})
 	})
 
-	r.POST("/plugin/instance/close/:id", func(c *gin.Context) {
+	r.POST("/plugin/instance/built-in/close/:id", func(c *gin.Context) {
 		id := c.Param("id")
-
 		instanceId, err := strconv.Atoi(id)
 		if err != nil {
 			return
 		}
 
-		go_pdk.Server.Plugins["nats"].Services["Release"]()
+		status, err := go_pdk.Server.InstanceStatus(instanceId)
+		if err != nil {
+			return
+		}
+
+		go_pdk.Server.Plugins[status.Name].Services["Release"]()
+		go_pdk.Server.CloseInstance(instanceId)
+		c.JSON(http.StatusOK, gin.H{
+			"data": "Success",
+		})
+	})
+
+	r.POST("/plugin/instance/service/close/:id", func(c *gin.Context) {
+		id := c.Param("id")
+		instanceId, err := strconv.Atoi(id)
+		if err != nil {
+			return
+		}
 
 		go_pdk.Server.CloseInstance(instanceId)
 		c.JSON(http.StatusOK, gin.H{
