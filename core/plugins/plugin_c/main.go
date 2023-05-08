@@ -6,7 +6,7 @@ import (
 )
 
 type Config struct {
-	Name    string `yaml:"add"`
+	Name    string `yaml:"name"`
 	Subject string `yaml:"subject"`
 }
 
@@ -16,7 +16,6 @@ func New() interface{} {
 
 func (conf Config) Access(pdk *go_pdk.PDK) {
 	fmt.Println("Plugin: ", conf.Name)
-	fmt.Println("Subject: ", conf.Subject)
 	for i := 0; i < 5; i++ {
 		go_pdk.Server.Plugins["nats"].Services["Publish"](conf.Subject, []byte(fmt.Sprintf("Hello from plugin C %v", i)))
 	}

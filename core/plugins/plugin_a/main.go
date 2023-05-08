@@ -32,9 +32,6 @@ func GetCallers() map[string]func(...interface{}) interface{} {
 func (conf Config) Access(pdk *go_pdk.PDK) {
 	fmt.Println("Plugin: ", conf.Name)
 
-	//pdk.PostEvent("kkk", &proto2.HelloB{Name: fmt.Sprintf("kkk from plugin B ")}, go_pdk.Scope{
-	//	Local: true,
-	//})
 	go_pdk.Server.Plugins["nats"].Services["Subscribe"]("hello")
 
 }

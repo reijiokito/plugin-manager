@@ -16,11 +16,6 @@ func New() interface{} {
 func (conf Config) Access(pdk *go_pdk.PDK) {
 	fmt.Println("Plugin: ", conf.Name)
 
-	//go_pdk.RegisterSubject("kkk", service.Hi)
-	//for i := 0; i < 5; i++ {
-	//	go_pdk.Server.Plugins["nats"].Services["Publish"]("hello", []byte(fmt.Sprintf("Hello from plugin B %v", i)))
-	//	time.Sleep(time.Second)
-	//}
 }
 
 func GetServices() map[string]func(...interface{}) {

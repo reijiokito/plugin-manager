@@ -12,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -180,13 +181,13 @@ func main() {
 
 	r := gin.Default()
 
-	r.GET("/plugin/get-all-info", func(c *gin.Context) {
+	r.GET("/plugin/get-all", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"data": pluginInfos,
 		})
 	})
 
-	r.GET("/plugin/get-all-instance-info", func(c *gin.Context) {
+	r.GET("/plugin/instance/get-all", func(c *gin.Context) {
 		type InstanceInfo struct {
 			Id                int
 			Name              string
@@ -263,6 +264,22 @@ func main() {
 			}
 		}
 
+		c.JSON(http.StatusOK, gin.H{
+			"data": "Success",
+		})
+	})
+
+	r.POST("/plugin/instance/close/:id", func(c *gin.Context) {
+		id := c.Param("id")
+
+		instanceId, err := strconv.Atoi(id)
+		if err != nil {
+			return
+		}
+
+		go_pdk.Server.Plugins["nats"].Services["Release"]()
+
+		go_pdk.Server.CloseInstance(instanceId)
 		c.JSON(http.StatusOK, gin.H{
 			"data": "Success",
 		})
