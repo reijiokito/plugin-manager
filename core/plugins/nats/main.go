@@ -18,12 +18,11 @@ type Config struct {
 	NatsPassword string `yaml:"natsPassword"`
 }
 
+var Version = "1.0.0"
+var Priority = 1
+
 func New() interface{} {
-	return &Config{
-		NatsUrl:      "127.0.0.1",
-		NatsUsername: "",
-		NatsPassword: "",
-	}
+	return &Config{}
 }
 
 func (conf Config) Access(pdk *go_pdk.PDK) {
@@ -53,6 +52,22 @@ func (conf Config) Access(pdk *go_pdk.PDK) {
 		log.Println(err)
 	}
 }
+
+//
+//func Request(args ...interface{}) interface{} {
+//	url := args[0].(string)
+//	reqBytes := args[1].([]byte)
+//
+//	msg, respErr := Connection.Request(go_pdk.PublishURL(url), reqBytes, 10*time.Second)
+//	if respErr != nil {
+//		return nil
+//	}
+//
+//	if err := proto.Unmarshal(msg.Data, &ctx.Response); err != nil {
+//		http.Error(rw, "Cannot deserialize response", http.StatusInternalServerError)
+//		return
+//	}
+//}
 
 func Publish(args ...interface{}) {
 	subject := args[0].(string)

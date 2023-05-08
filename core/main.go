@@ -17,10 +17,9 @@ import (
 )
 
 var (
-	dumpAllPlugins = flag.Bool("dump-all-plugins", true, "Dump info about all available plugins")
-	pluginsDir     = flag.String("plugins-directory", "/usr/local/sigma/go-plugins", "Set directory `path` where to search plugins")
-	configDir      = flag.String("config-plugin-directory", "/home/cong/Downloads/24_4/plugin-manager/core/config/", "Set config directory `path` where to load plugin configs")
-	managerPort    = flag.String("manager_port", "localhost:8000", "Manager Port")
+	pluginsDir  = flag.String("plugins-directory", "/usr/local/sigma/go-plugins", "Set directory `path` where to search plugins")
+	configDir   = flag.String("config-plugin-directory", "/home/cong/Downloads/24_4/plugin-manager/core/config/", "Set config directory `path` where to load plugin configs")
+	managerPort = flag.String("manager_port", "localhost:8000", "Manager Port")
 )
 
 var configPlugins [2]map[string][]byte
@@ -112,40 +111,42 @@ func dumpAllPluginConfig() {
 
 func initBuildInPlugin(pdk *go_pdk.PDK) {
 	for _, val := range go_pdk.Server.Plugins {
-		if _, ok := configPlugins[0][val.Name]; ok {
-			_, err := go_pdk.Server.StartInstance(go_pdk.PluginConfig{
-				Name:   val.Name,
-				Config: configPlugins[0][val.Name],
-			})
-			if err != nil {
-				return
-			}
-		}
+		startInstance(configPlugins[0], val.Name)
 	}
+
 	for _, val := range go_pdk.Server.Instances {
-		if _, ok := configPlugins[0][val.Plugin.Name]; ok {
-			exec(val.Handlers["access"], pdk)
-		}
+		execHandler(configPlugins[0], val.Handlers, "access", val.Plugin.Name, pdk)
 	}
 }
 
 func initServicePlugin(pdk *go_pdk.PDK) {
 	for _, val := range go_pdk.Server.Plugins {
-		if _, ok := configPlugins[1][val.Name]; ok {
-			_, err := go_pdk.Server.StartInstance(go_pdk.PluginConfig{
-				Name:   val.Name,
-				Config: configPlugins[1][val.Name],
-			})
-			if err != nil {
-				return
-			}
-		}
+		startInstance(configPlugins[1], val.Name)
 	}
 
 	for _, val := range go_pdk.Server.Instances {
-		if _, ok := configPlugins[1][val.Plugin.Name]; ok {
-			exec(val.Handlers["access"], pdk)
+		execHandler(configPlugins[1], val.Handlers, "access", val.Plugin.Name, pdk)
+	}
+}
+
+func startInstance(configs map[string][]byte, name string) *go_pdk.InstanceStatus {
+	if _, ok := configs[name]; ok {
+		status, err := go_pdk.Server.StartInstance(go_pdk.PluginConfig{
+			Name:   name,
+			Config: configs[name],
+		})
+		if err != nil {
+			log.Println(fmt.Sprintf("Start Instance err: %v", err))
+			return nil
 		}
+		return status
+	}
+	return nil
+}
+
+func execHandler(configs map[string][]byte, handler map[string]func(pdk *go_pdk.PDK), handlerName string, pluginName string, pdk *go_pdk.PDK) {
+	if _, ok := configs[pluginName]; ok {
+		exec(handler[handlerName], pdk)
 	}
 }
 
@@ -251,27 +252,14 @@ func main() {
 
 		for _, val := range go_pdk.Server.Plugins {
 			if val.Name == data.Name {
-				if _, ok := configPlugins[1][data.Name]; ok {
-					status, err := go_pdk.Server.StartInstance(go_pdk.PluginConfig{
-						Name:   val.Name,
-						Config: configPlugins[1][data.Name],
-					})
-					if err != nil {
-						log.Println(fmt.Sprintf("Start instance err: %v", err))
-						return
-					}
-
-					instanceId = status.Id
-				}
+				status := startInstance(configPlugins[1], data.Name)
+				instanceId = status.Id
 			}
-
 		}
 
 		for _, val := range go_pdk.Server.Instances {
 			if val.Plugin.Name == data.Name && val.Id == instanceId {
-				if _, ok := configPlugins[1][data.Name]; ok {
-					go exec(val.Handlers["access"], pdk)
-				}
+				execHandler(configPlugins[1], val.Handlers, "access", data.Name, pdk)
 			}
 		}
 
