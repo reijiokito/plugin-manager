@@ -6,8 +6,8 @@ import (
 )
 
 type Config struct {
-	Add string `yaml:"add"`
-	Url string `yaml:"url"`
+	Name    string `yaml:"add"`
+	Subject string `yaml:"subject"`
 }
 
 func New() interface{} {
@@ -15,10 +15,10 @@ func New() interface{} {
 }
 
 func (conf Config) Access(pdk *go_pdk.PDK) {
-	fmt.Println("Plugin: ", conf.Add)
-	fmt.Println("Plugin: ", conf.Url)
+	fmt.Println("Plugin: ", conf.Name)
+	fmt.Println("Subject: ", conf.Subject)
 	for i := 0; i < 5; i++ {
-		go_pdk.Server.Plugins["nats"].Services["Publish"]("hello", []byte(fmt.Sprintf("Hello from plugin C %v", i)))
+		go_pdk.Server.Plugins["nats"].Services["Publish"](conf.Subject, []byte(fmt.Sprintf("Hello from plugin C %v", i)))
 	}
 
 }
